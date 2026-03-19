@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATR Cashback Audit — Live Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f8f9fb; --bg2:#f0f2f7; --surface:#ffffff; --surface2:#f4f6fa;
+  --border:#e2e6ef; --border2:#c8cfe0;
+  --ink:#1a1f2e; --ink2:#4a5568; --muted:#8a96aa;
+  --ok:#16a34a; --danger:#dc2626; --warn:#d97706; --notdue:#7c3aed;
+  --info:#0284c7; --accent:#059669;
+  --f-display:'Bebas Neue',sans-serif;
+  --f-body:'DM Sans',sans-serif;
+  --f-mono:'DM Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.4;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(100,120,160,.08) 39px,rgba(100,120,160,.08) 40px),
+                   repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(100,120,160,.08) 39px,rgba(100,120,160,.08) 40px);}
+.wrap{position:relative;z-index:1;}
+
+/* ── HEADER ── */
+header{background:linear-gradient(135deg,#1e3a5f,#1a3354);border-bottom:1px solid var(--border);
+  padding:0 32px;display:flex;align-items:stretch;justify-content:space-between;
+  position:sticky;top:0;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,.15);}
+.h-left{display:flex;align-items:center;gap:16px;padding:14px 0;}
+.h-logo{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--notdue));
+  border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.h-eyebrow{font-family:var(--f-mono);font-size:.58rem;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:3px;}
+.h-title{font-family:var(--f-display);font-size:1.55rem;letter-spacing:2px;line-height:1;}
+.h-right{display:flex;align-items:center;gap:12px;}
+
+.live-pill{display:flex;align-items:center;gap:7px;background:rgba(34,197,94,.1);
+  border:1px solid rgba(34,197,94,.25);border-radius:20px;padding:5px 13px;
+  font-family:var(--f-mono);font-size:.6rem;color:var(--ok);letter-spacing:1.5px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);animation:blink 1.4s ease infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+.sync-info{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.sync-time{font-family:var(--f-mono);font-size:.6rem;color:var(--muted);}
+.sync-next{font-family:var(--f-mono);font-size:.56rem;color:var(--muted);opacity:.6;}
+
+.notif-btn{position:relative;background:rgba(255,255,255,.06);border:1px solid var(--border2);
+  border-radius:8px;padding:8px 14px;cursor:pointer;font-size:17px;transition:background .2s;}
+.notif-btn:hover{background:rgba(255,255,255,.12);}
+.notif-badge{position:absolute;top:-7px;right:-7px;background:var(--danger);color:#fff;
+  font-family:var(--f-display);font-size:.65rem;width:19px;height:19px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);}
+
+/* ── SETUP BANNER ── */
+.setup-banner{
+  background:linear-gradient(135deg,rgba(2,132,199,.06),rgba(124,58,237,.06));
+  border:1px solid rgba(56,189,248,.25);border-radius:12px;padding:20px 24px;
+  margin:24px 32px;display:flex;align-items:flex-start;gap:16px;}
+.sb-icon{font-size:28px;flex-shrink:0;margin-top:2px;}
+.sb-title{font-family:var(--f-display);font-size:1rem;letter-spacing:1px;color:var(--info);margin-bottom:6px;}
+.sb-body{font-size:.75rem;color:var(--ink2);line-height:1.7;}
+.sb-body code{font-family:var(--f-mono);font-size:.7rem;background:rgba(255,255,255,.08);
+  padding:2px 7px;border-radius:4px;color:var(--accent);}
+.sb-url-row{display:flex;gap:8px;margin-top:12px;align-items:center;}
+.sb-input{background:#ffffff;border:1px solid var(--border2);border-radius:8px;
+  padding:9px 14px;font-family:var(--f-mono);font-size:.72rem;color:var(--ink);
+  outline:none;flex:1;transition:border-color .2s;}
+.sb-input:focus{border-color:var(--accent);}
+.sb-input::placeholder{color:var(--muted);}
+.sb-btn{background:var(--accent);color:var(--bg);border:none;border-radius:8px;
+  padding:9px 18px;font-family:var(--f-display);font-size:.85rem;letter-spacing:1px;
+  cursor:pointer;white-space:nowrap;transition:opacity .2s;}
+.sb-btn:hover{opacity:.85;}
+.sb-dismiss{background:transparent;border:1px solid var(--border2);border-radius:8px;
+  padding:9px 14px;font-family:var(--f-mono);font-size:.65rem;color:var(--muted);
+  cursor:pointer;transition:border-color .2s;white-space:nowrap;}
+.sb-dismiss:hover{border-color:var(--ink2);color:var(--ink);}
+
+/* ── ERROR / STATUS BARS ── */
+.status-bar{margin:0 32px 20px;padding:12px 18px;border-radius:10px;
+  font-family:var(--f-mono);font-size:.7rem;display:none;align-items:center;gap:10px;}
+.status-bar.err{background:rgba(220,38,38,.07);border:1px solid rgba(239,68,68,.2);color:var(--danger);}
+.status-bar.loading{background:rgba(2,132,199,.07);border:1px solid rgba(56,189,248,.2);color:var(--info);}
+.status-bar.show{display:flex;}
+.spin{display:inline-block;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── NOTIFICATION PANEL ── */
+.notif-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:400;display:none;}
+.notif-overlay.show{display:block;}
+.notif-panel{position:fixed;top:0;right:-420px;width:400px;height:100vh;
+  background:#ffffff;border-left:1px solid var(--border2);z-index:500;
+  transition:right .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;
+  box-shadow:-8px 0 32px rgba(0,0,0,.12);}
+.notif-panel.open{right:0;}
+.np-header{background:linear-gradient(135deg,#1e3a5f,#1a3354);padding:20px 22px;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.np-title{font-family:var(--f-display);font-size:1.15rem;letter-spacing:1.5px;}
+.np-close{cursor:pointer;color:var(--muted);font-size:22px;transition:color .2s;}
+.np-close:hover{color:var(--ink);}
+.np-body{flex:1;overflow-y:auto;padding:14px;}
+.np-item{background:#f8f9fb;border:1px solid #e2e6ef;border-radius:10px;
+  padding:13px 15px;margin-bottom:10px;border-left:3px solid;animation:fadein .3s ease both;}
+.np-item.red{border-left-color:var(--danger);}
+.np-item.amber{border-left-color:var(--warn);}
+.np-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:5px;}
+.np-tag{font-family:var(--f-display);font-size:.72rem;padding:2px 9px;border-radius:4px;flex-shrink:0;}
+.np-tag.red{background:rgba(239,68,68,.15);color:var(--danger);}
+.np-tag.amber{background:rgba(245,158,11,.15);color:var(--warn);}
+.np-text{font-size:.75rem;font-weight:500;color:var(--ink);line-height:1.45;}
+.np-meta{font-size:.65rem;color:var(--muted);}
+.np-empty{text-align:center;padding:48px 20px;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);}
+
+/* ── MAIN ── */
+main{padding:0 32px 32px;}
+.sec-label{font-family:var(--f-mono);font-size:.58rem;letter-spacing:3px;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* ── STAT CARDS ── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
+.stat{background:#ffffff;border:1px solid var(--border);border-radius:14px;
+  padding:22px 24px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:default;}
+.stat:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,.1);}
+.stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.stat.total::after{background:var(--accent);}
+.stat.ok::after{background:var(--ok);}
+.stat.notdue::after{background:var(--notdue);}
+.stat.danger::after{background:var(--danger);}
+.stat-glow{position:absolute;top:-30px;right:-30px;width:100px;height:100px;
+  border-radius:50%;opacity:.06;filter:blur(20px);}
+.stat.total .stat-glow{background:var(--accent);}
+.stat.ok .stat-glow{background:var(--ok);}
+.stat.notdue .stat-glow{background:var(--notdue);}
+.stat.danger .stat-glow{background:var(--danger);}
+.stat-label{font-family:var(--f-mono);font-size:.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.stat-num{font-family:var(--f-display);font-size:3.4rem;line-height:1;margin-bottom:4px;}
+.stat.total .stat-num{color:var(--accent);}
+.stat.ok .stat-num{color:var(--ok);}
+.stat.notdue .stat-num{color:var(--notdue);}
+.stat.danger .stat-num{color:var(--danger);}
+.stat-sub{font-size:.68rem;color:var(--muted);}
+.stat-icon{position:absolute;top:18px;right:20px;font-size:26px;opacity:.18;}
+
+/* ── CARDS / GRIDS ── */
+.card{background:#ffffff;border:1px solid var(--border);border-radius:14px;padding:22px;}
+.card-title{font-family:var(--f-display);font-size:.95rem;letter-spacing:1.5px;
+  margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.card-title small{font-family:var(--f-mono);font-size:.58rem;color:var(--muted);letter-spacing:1px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:20px;}
+
+/* ── DONUT ── */
+.donut-wrap{display:flex;align-items:center;gap:26px;}
+.donut-leg{flex:1;display:flex;flex-direction:column;gap:13px;}
+.dl-row{display:flex;align-items:center;gap:10px;}
+.dl-name{font-size:.72rem;color:var(--ink2);width:95px;flex-shrink:0;}
+.dl-track{flex:1;height:5px;background:#e2e6ef;border-radius:3px;overflow:hidden;}
+.dl-fill{height:100%;border-radius:3px;transition:width 1.1s ease;}
+.dl-val{font-family:var(--f-display);font-size:1rem;min-width:26px;text-align:right;}
+
+/* ── BAR CHART ── */
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:160px;margin-top:4px;}
+.b-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;}
+.b-stacks{display:flex;gap:2px;align-items:flex-end;height:130px;width:100%;justify-content:center;}
+.b-bar{flex:1;border-radius:3px 3px 0 0;cursor:pointer;position:relative;min-width:5px;transition:filter .15s;}
+.b-bar:hover{filter:brightness(1.3);}
+.b-tip{position:absolute;bottom:calc(100%+6px);left:50%;transform:translateX(-50%);
+  background:var(--surface2);border:1px solid var(--border2);border-radius:6px;
+  padding:4px 9px;font-family:var(--f-mono);font-size:.6rem;white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .15s;z-index:10;}
+.b-bar:hover .b-tip{opacity:1;}
+.b-lbl{font-family:var(--f-mono);font-size:.58rem;color:var(--muted);}
+.bar-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+.bl-i{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:.6rem;color:var(--muted);}
+.bl-d{width:9px;height:9px;border-radius:2px;}
+
+/* ── TEAM PROGRESS ── */
+.tp-row{margin-bottom:15px;}
+.tp-meta{display:flex;justify-content:space-between;margin-bottom:6px;}
+.tp-name{font-size:.76rem;font-weight:500;}
+.tp-counts{font-family:var(--f-mono);font-size:.63rem;color:var(--muted);}
+.tp-track{height:7px;background:#e2e6ef;border-radius:4px;overflow:hidden;}
+.tp-fill{height:100%;border-radius:4px;transition:width 1.2s ease;}
+
+/* ── RISK PILLS ── */
+.rp-row{display:flex;align-items:center;gap:12px;margin-bottom:13px;}
+.rp-label{font-size:.73rem;font-weight:500;color:var(--ink2);width:70px;flex-shrink:0;}
+.rp-track{flex:1;height:10px;background:#e2e6ef;border-radius:5px;overflow:hidden;}
+.rp-fill{height:100%;border-radius:5px;transition:width 1.1s ease;}
+.rp-count{font-family:var(--f-display);font-size:.9rem;min-width:26px;text-align:right;}
+
+/* ── TYPE GRID ── */
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px;}
+.type-card{background:#f4f6fa;border:1px solid #e2e6ef;border-radius:10px;padding:14px;text-align:center;}
+.type-num{font-family:var(--f-display);font-size:2rem;margin-bottom:3px;}
+.type-lbl{font-family:var(--f-mono);font-size:.56rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+
+/* ── BREACH TRACKER ── */
+.breach-item{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:11px 0;border-bottom:1px solid var(--border);gap:14px;}
+.breach-item:last-child{border:none;}
+.bi-obs{font-family:var(--f-mono);font-size:.6rem;color:var(--info);margin-bottom:2px;}
+.bi-text{font-size:.71rem;color:var(--ink);line-height:1.4;margin-bottom:3px;}
+.bi-owner{font-size:.62rem;color:var(--muted);}
+.bi-badge{font-family:var(--f-display);font-size:.8rem;padding:4px 12px;border-radius:5px;white-space:nowrap;flex-shrink:0;}
+.bi-badge.red{background:rgba(239,68,68,.12);color:var(--danger);border:1px solid rgba(239,68,68,.2);}
+.bi-badge.amber{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.2);}
+.bi-badge.safe{background:rgba(34,197,94,.1);color:var(--ok);border:1px solid rgba(34,197,94,.2);}
+
+/* ── OWNER LIST ── */
+.owner-row{display:flex;align-items:center;justify-content:space-between;
+  background:#f4f6fa;border-radius:8px;padding:10px 14px;margin-bottom:7px;}
+.owner-name{font-size:.73rem;font-weight:500;}
+.owner-stats{display:flex;gap:8px;}
+.os-pill{font-family:var(--f-mono);font-size:.6rem;padding:2px 8px;border-radius:10px;}
+.os-pill.green{background:rgba(34,197,94,.12);color:var(--ok);}
+.os-pill.gray{background:rgba(160,174,192,.1);color:var(--ink2);}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.f-in{background:#ffffff;border:1px solid var(--border);border-radius:8px;
+  padding:9px 14px;font-family:var(--f-mono);font-size:.7rem;color:var(--ink);
+  outline:none;flex:1;min-width:200px;transition:border-color .2s;}
+.f-in:focus{border-color:var(--accent);}
+.f-in::placeholder{color:var(--muted);}
+.f-sel{background:#ffffff;border:1px solid var(--border);border-radius:8px;
+  padding:9px 12px;font-family:var(--f-mono);font-size:.7rem;color:var(--ink);
+  outline:none;cursor:pointer;}
+.f-sel option{background:var(--surface2);}
+.f-btn{background:#f0f4fa;border:1px solid var(--border2);border-radius:8px;
+  padding:9px 16px;font-family:var(--f-mono);font-size:.65rem;color:var(--ink);
+  cursor:pointer;letter-spacing:1px;transition:background .2s;}
+.f-btn:hover{background:var(--border2);}
+.f-count{font-family:var(--f-mono);font-size:.63rem;color:var(--muted);}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.72rem;}
+thead tr{background:var(--bg2);}
+th{padding:11px 13px;text-align:left;font-family:var(--f-mono);font-size:.56rem;
+  letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:500;
+  border-bottom:1px solid var(--border2);white-space:nowrap;}
+td{padding:11px 13px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.45;}
+tbody tr:hover{background:rgba(110,231,183,.03);}
+.td-obs{font-family:var(--f-mono);font-size:.63rem;color:var(--info);font-weight:500;}
+.td-action{font-size:.68rem;color:var(--ink);max-width:260px;}
+.td-owner{font-size:.68rem;color:var(--accent);font-weight:500;}
+.td-tl{font-family:var(--f-mono);font-size:.63rem;color:var(--muted);max-width:150px;}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;
+  font-size:.6rem;font-family:var(--f-mono);font-weight:500;letter-spacing:.3px;white-space:nowrap;}
+.pill.impl{background:rgba(34,197,94,.1);color:var(--ok);border:1px solid rgba(34,197,94,.2);}
+.pill.nd{background:rgba(167,139,250,.1);color:var(--notdue);border:1px solid rgba(167,139,250,.2);}
+.pill.ov{background:rgba(239,68,68,.1);color:var(--danger);border:1px solid rgba(239,68,68,.2);animation:pulseR 2s ease infinite;}
+@keyframes pulseR{0%,100%{background:rgba(239,68,68,.1)}50%{background:rgba(239,68,68,.2)}}
+.risk-h{font-size:.62rem;font-weight:700;color:var(--danger);}
+.risk-m{font-size:.62rem;font-weight:700;color:var(--warn);}
+.risk-l{font-size:.62rem;font-weight:700;color:var(--ok);}
+.breach-flag{display:block;font-size:.6rem;color:var(--warn);margin-top:3px;font-family:var(--f-mono);}
+@keyframes fadein{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+@media(max-width:1100px){.stats-row{grid-template-columns:repeat(2,1fr);}.g2,.g3{grid-template-columns:1fr;}main,header,.setup-banner,.status-bar{padding-left:16px;padding-right:16px;margin-left:0;margin-right:0;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- NOTIF PANEL -->
+<div class="notif-overlay" id="nOverlay" onclick="closeNotif()"></div>
+<div class="notif-panel" id="nPanel">
+  <div class="np-header">
+    <div class="np-title">🔔 ALERTS & NOTIFICATIONS</div>
+    <span class="np-close" onclick="closeNotif()">✕</span>
+  </div>
+  <div class="np-body" id="nBody"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="h-left">
+    <div class="h-logo">💳</div>
+    <div>
+      <div class="h-eyebrow">Cashback Process Audit · Action Taken Report</div>
+      <div class="h-title">ATR LIVE DASHBOARD</div>
+    </div>
+  </div>
+  <div class="h-right">
+    <div class="live-pill"><div class="live-dot"></div><span id="liveLabel">CONNECTING…</span></div>
+    <div class="sync-info">
+      <div class="sync-time" id="syncTime">Last sync: —</div>
+      <div class="sync-next" id="syncNext">Next refresh in 60s</div>
+    </div>
+    <div class="notif-btn" onclick="openNotif()">
+      🔔<div class="notif-badge" id="nBadge" style="display:none">0</div>
+    </div>
+  </div>
+</header>
+
+<!-- SETUP BANNER -->
+<div class="setup-banner" id="setupBanner">
+  <div class="sb-icon">⚙️</div>
+  <div style="flex:1">
+    <div class="sb-title">CONNECT YOUR GOOGLE SHEET</div>
+    <div class="sb-body">
+      Paste your <strong>Apps Script Web App URL</strong> below to load live data from your sheet.<br>
+      <strong>How to get it:</strong>
+      Open your Google Sheet →
+      <code>Extensions → Apps Script</code> →
+      paste the script →
+      <code>Deploy → New Deployment → Web App → Execute as: Me → Access: Anyone</code> →
+      copy the URL.
+    </div>
+    <div class="sb-url-row">
+      <input class="sb-input" id="scriptUrlInput" type="text"
+        placeholder="https://script.google.com/macros/s/…/exec"
+        value="">
+      <button class="sb-btn" onclick="saveAndConnect()">CONNECT</button>
+      <button class="sb-dismiss" onclick="dismissBanner()">Use demo data</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BARS -->
+<div class="status-bar loading" id="loadingBar"><span class="spin">⟳</span> Fetching live data from Google Sheet…</div>
+<div class="status-bar err" id="errBar"></div>
+
+<main>
+  <div class="sec-label">Status Overview</div>
+  <div class="stats-row">
+    <div class="stat total"><div class="stat-glow"></div><div class="stat-icon">📋</div>
+      <div class="stat-label">Total Action Items</div>
+      <div class="stat-num" id="sTotal">—</div>
+      <div class="stat-sub" id="sSub">Across all observations</div>
+    </div>
+    <div class="stat ok"><div class="stat-glow"></div><div class="stat-icon">✅</div>
+      <div class="stat-label">Implemented</div>
+      <div class="stat-num" id="sImpl">—</div>
+      <div class="stat-sub" id="sImplP">— complete</div>
+    </div>
+    <div class="stat notdue"><div class="stat-glow"></div><div class="stat-icon">🕐</div>
+      <div class="stat-label">Not Due Yet</div>
+      <div class="stat-num" id="sNotDue">—</div>
+      <div class="stat-sub" id="sNotDueP">— pending</div>
+    </div>
+    <div class="stat danger"><div class="stat-glow"></div><div class="stat-icon">🚨</div>
+      <div class="stat-label">Breach Risk</div>
+      <div class="stat-num" id="sBreach">—</div>
+      <div class="stat-sub">Due within 7 days</div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">STATUS DISTRIBUTION</div>
+      <div class="donut-wrap">
+        <svg id="donutSvg" width="140" height="140" viewBox="0 0 140 140" style="flex-shrink:0"></svg>
+        <div class="donut-leg" id="donutLeg"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">MONTH-WISE BREAKDOWN <small>Target Timeline Month</small></div>
+      <div class="bar-legend">
+        <div class="bl-i"><div class="bl-d" style="background:var(--ok)"></div>Implemented</div>
+        <div class="bl-i"><div class="bl-d" style="background:var(--notdue)"></div>Not Due</div>
+      </div>
+      <div class="bar-chart" id="monthBars"></div>
+    </div>
+  </div>
+
+  <div class="g3">
+    <div class="card">
+      <div class="card-title">TEAM COMPLETION</div>
+      <div id="teamProg"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">RISK DISTRIBUTION</div>
+      <div id="riskPills"></div>
+      <div class="type-grid" id="typeGrid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🚨 BREACH TRACKER <small>Nearing deadline</small></div>
+      <div id="breachList"></div>
+    </div>
+  </div>
+
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">OWNER / SPOC SUMMARY</div>
+      <div id="ownerList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">LATEST STATUS UPDATES</div>
+      <div id="updatesList"></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Full ATR Register</div>
+  <div class="filter-bar">
+    <input class="f-in" type="text" placeholder="🔍  Search observation, action, owner, team…" oninput="applyFilters()">
+    <select class="f-sel" id="fStatus" onchange="applyFilters()">
+      <option value="">All Status</option>
+      <option>Implemented</option><option>Not Due</option><option>Overdue</option>
+    </select>
+    <select class="f-sel" id="fTeam" onchange="applyFilters()"><option value="">All Teams</option></select>
+    <select class="f-sel" id="fRisk" onchange="applyFilters()">
+      <option value="">All Risk</option>
+      <option>High</option><option>Medium</option><option>Low</option>
+    </select>
+    <select class="f-sel" id="fMonth" onchange="applyFilters()"><option value="">All Months</option></select>
+    <button class="f-btn" onclick="resetFilters()">✕ RESET</button>
+    <div class="f-count" id="fCount"></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Obs.</th><th>Observation Header</th><th>Sub-Observation</th>
+          <th>Risk</th><th>Action Item</th><th>Type</th>
+          <th>Owner / SPOC</th><th>Team</th><th>Target Timeline</th>
+          <th>Current Status</th><th>Final Status</th><th>Month</th>
+        </tr></thead>
+        <tbody id="tBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════
+const STORAGE_KEY   = 'atr_script_url';
+const REFRESH_SEC   = 60;   // auto-refresh interval in seconds
+const TODAY         = new Date();
+
+let SCRIPT_URL = localStorage.getItem(STORAGE_KEY) || '';
+let ALL_DATA   = [];
+let FILTERED   = [];
+let refreshTimer, countdownTimer, countdown = REFRESH_SEC;
+
+// ════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  if (SCRIPT_URL) {
+    document.getElementById('scriptUrlInput').value = SCRIPT_URL;
+    document.getElementById('setupBanner').style.display = 'none';
+    fetchData();
+  } else {
+    // load demo data so dashboard isn't empty
+    loadDemoData();
+  }
+  startCountdown();
+});
+
+// ════════════════════════════════════════════════════
+// CONNECTION
+// ════════════════════════════════════════════════════
+function saveAndConnect() {
+  const val = document.getElementById('scriptUrlInput').value.trim();
+  if (!val || !val.startsWith('https://script.google.com')) {
+    alert('Please paste a valid Apps Script URL (starts with https://script.google.com)');
+    return;
+  }
+  SCRIPT_URL = val;
+  localStorage.setItem(STORAGE_KEY, SCRIPT_URL);
+  dismissBanner();
+  fetchData();
+}
+
+function dismissBanner() {
+  document.getElementById('setupBanner').style.display = 'none';
+  if (!ALL_DATA.length) loadDemoData();
+}
+
+// ════════════════════════════════════════════════════
+// FETCH LIVE DATA
+// ════════════════════════════════════════════════════
+async function fetchData() {
+  if (!SCRIPT_URL) return;
+  showLoading(true);
+  hideError();
+
+  try {
+    // Use JSONP to bypass CORS — Apps Script supports ?callback=fnName
+    const json = await fetchJSONP(SCRIPT_URL);
+
+    if (!json.success && json.error) throw new Error(json.error);
+
+    ALL_DATA = (json.rows || []).filter(r =>
+      r['Action Item'] || r['Observation Header'] || r['Sub - Observation']
+    );
+    FILTERED = [...ALL_DATA];
+
+    renderAll();
+    setLive(true, json.lastRefreshed || new Date().toLocaleTimeString());
+    populateFilterDropdowns();
+    resetCountdown();
+
+  } catch(e) {
+    showError('⚠ Could not load data: ' + e.message +
+      ' — Please re-deploy your Apps Script as a new version (Deploy → Manage deployments → edit → New version → Deploy).');
+    setLive(false);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ── JSONP helper — bypasses CORS for Google Apps Script ──
+function fetchJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'atr_cb_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Request timed out after 15s. Check your Apps Script deployment.'));
+    }, 15000);
+
+    window[cbName] = function(data) {
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    script.onerror = () => { cleanup(); reject(new Error('Script load failed — check the Apps Script URL is correct and deployed as "Anyone".')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&t=' + Date.now();
+    document.head.appendChild(script);
+  });
+}
+
+function startCountdown() {
+  clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('syncNext').textContent = `Next refresh in ${countdown}s`;
+    if (countdown <= 0) {
+      countdown = REFRESH_SEC;
+      if (SCRIPT_URL) fetchData();
+    }
+  }, 1000);
+}
+
+function resetCountdown() {
+  countdown = REFRESH_SEC;
+}
+
+function setLive(ok, time) {
+  document.getElementById('liveLabel').textContent = ok ? 'LIVE' : 'OFFLINE';
+  document.getElementById('syncTime').textContent = 'Last sync: ' + (time || '—');
+}
+
+function showLoading(v) {
+  document.getElementById('loadingBar').classList.toggle('show', v);
+}
+function showError(msg) {
+  const b = document.getElementById('errBar');
+  b.textContent = msg; b.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errBar').classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════
+// DEMO DATA (fallback — your actual CSV data)
+// ════════════════════════════════════════════════════
+function loadDemoData() {
+  ALL_DATA = [{"Observation":"1A","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Incorrect EMI offer configuration resulting in additional benefits to customers","Risk Rating":"High","Action Item":"One-time reconciliation of HDFC TID configuration","Incident / Systemic":"Incident","Owner / SPOC":"Akshay Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"15 Mar 2026","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"1B","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Mismatch in TID rates configuration with HDFC bank","Risk Rating":"High","Action Item":"A process will be defined and documented in the SOP for monthly reconciliation of HDFC Bank configurations.","Incident / Systemic":"Systemic","Owner / SPOC":"Akshay Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"31st Mar 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"1B","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Outdated ICICI configurations in Paytm system","Risk Rating":"High","Action Item":"Inactive brands/configurations will be disabled for ICICI Bank","Incident / Systemic":"Incident","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"15 Mar 2026","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"1C","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Incorrect setup of HDFC EMI Discount Type (Instant vs Deferred)","Risk Rating":"High","Action Item":"Product has moved all existing brands under deferred subvention model for HDFC.","Incident / Systemic":"Incident","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"1C","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Incorrect setup of HDFC EMI Discount Type","Risk Rating":"High","Action Item":"Configuration of Instant subvention model for HDFC being removed in Brand onboarding workflow.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Feb'26"},{"Observation":"1C","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Incorrect setup of HDFC EMI Discount Type","Risk Rating":"High","Action Item":"RA has implemented reconciliation controls to validate ICB payouts against subvention reports (CDO).","Incident / Systemic":"Systemic","Owner / SPOC":"Sanchit Aggarwal","Team":"RA","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Feb'26"},{"Observation":"1D","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Merchant sponsored cashback offer incorrectly configured in system (ICICI)","Risk Rating":"High","Action Item":"Enterprise and Banking Alliance teams coordinating with ICICI Bank to consider offer as exception.","Incident / Systemic":"Incident","Owner / SPOC":"Shivam Chaturvedi","Team":"Enterprise Operation Team","Target Timeline":"31st Mar 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"1D","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Merchant sponsored cashback offer incorrectly configured (ICICI)","Risk Rating":"High","Action Item":"Implementation of a pre-go-live QC process has been documented in the Business Ops SOP","Incident / Systemic":"Systemic","Owner / SPOC":"Shivam Chaturvedi","Team":"Enterprise Operation Team","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Feb'26"},{"Observation":"1D","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Merchant sponsored cashback offer incorrectly configured (ICICI)","Risk Rating":"High","Action Item":"Post-live monitoring will be performed by the RA team for merchant-funded offers.","Incident / Systemic":"Systemic","Owner / SPOC":"Sanchit Aggarwal","Team":"RA","Target Timeline":"15th Apr 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"1E","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Cashback offer incorrectly extended to unauthorized merchants (ICICI)","Risk Rating":"High","Action Item":"Bank confirmed Sept 25 disputed amount resolved. Alliance team to address Aug 25 and Oct-Nov 25.","Incident / Systemic":"Incident","Owner / SPOC":"Aanchal Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"31 Mar 2026","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"1E","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Cashback offer incorrectly extended to unauthorized merchants (ICICI)","Risk Rating":"High","Action Item":"Banking Alliance exploring deemed consent mechanism with ICICI Bank for brand offers.","Incident / Systemic":"Systemic","Owner / SPOC":"Aanchal Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"15 Mar 2026","Current Status":"Process implemented in Brand ops SOP. Without Bank approval, no offer goes live.","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"1E","Observation Header":"Configuration Gaps noted in price and offer constructs","Sub - Observation":"Merchant exception lists for ICICI cashback offers maintained in shared Google Sheet","Risk Rating":"High","Action Item":"Product evaluating automation feasibility of merchant mapping with ICICI TIDs.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"20th April 2026","Current Status":"Solution Finalised April Week 3 for Implementation","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"2A","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Inadequate system validation checks for TID configuration","Risk Rating":"High","Action Item":"System validation to restrict Duplicate TID entry for multiple ROI, subvention, tenure and category","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"15 Mar 2026","Current Status":"Solution UAT. Will deploy on 22nd Mar","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"2A","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Inadequate visibility of ROI values","Risk Rating":"High","Action Item":"ROI against the TID will be part of the TID configuration and made available in system.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"15 Mar 2026","Current Status":"Solution UAT. Will deploy on 22nd Mar","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"2A","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Redundant data fields in Promo Engine","Risk Rating":"High","Action Item":"Task forms part of product roadmap, scheduled for closure by end April 2026","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"30 Apr 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"2A","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Lack of automated alerts for configuration changes","Risk Rating":"High","Action Item":"Notifications will be enabled for all bank and brand configuration changes on Boss Panel.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"30 Apr 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"2A","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Absence of system integration between BOSS and Promo Engine","Risk Rating":"High","Action Item":"Implement validation to restrict subvention beyond approved limits.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"30 Apr 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"2A","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Manual TID updation process","Risk Rating":"High","Action Item":"Conduct workshop with HDFC to assess feasibility of API integration","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"20 Mar 2026","Current Status":"Tech discussions with HDFC to be planned through Banking alliance","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"2B","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"No post-go-live offer transaction monitoring","Risk Rating":"High","Action Item":"RA to implement weekly post-go-live offer monitoring and validation process with dedicated SOP.","Incident / Systemic":"Systemic","Owner / SPOC":"Sanchit Aggarwal","Team":"RA","Target Timeline":"15th April 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"2B","Observation Header":"Inadequate governance and system controls over price / offer configurations","Sub - Observation":"Absence of monitoring dashboards","Risk Rating":"High","Action Item":"Development in phased manner. Product team to confirm phase-wise approach.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"07 Mar 2026","Current Status":"Phase 1 Solution ready April 1st week","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"3A & B","Observation Header":"Processing fees not charged as per Bank agreements","Sub - Observation":"Processing Fees not charged - HDFC as Acquirer","Risk Rating":"Medium","Action Item":"Business team to provide clarity to RA team regarding HDFC TIDs where processing fee revenue not booked.","Incident / Systemic":"Incident & Systemic","Owner / SPOC":"Sanchit Aggarwal","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"7 Mar 2026","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"3C","Observation Header":"Processing fees not charged as per Bank agreements","Sub - Observation":"Processing Fee mismatch, HDFC Bank (Credit Card)","Risk Rating":"Medium","Action Item":"RA rates documented on Email. Banking alliance to coordinate with acquiring team to update fee letter.","Incident / Systemic":"Incident & Systemic","Owner / SPOC":"Akshay Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"Under Evaluation","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"4","Observation Header":"Inadequate controls around TID / price configuration","Sub - Observation":"SOP gaps in TID validation and Maker-Checker controls","Risk Rating":"Medium","Action Item":"Publish centralized end-to-end EMI Configuration SOP covering all departments.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"7 Mar 2026","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"5A","Observation Header":"Absence of centralized tool to monitor campaign creation","Sub - Observation":"Absence of a centralized campaign management tool","Risk Rating":"Medium","Action Item":"Joint evaluation for feasibility of centralised campaign management through Jira.","Incident / Systemic":"Systemic","Owner / SPOC":"Harleen Kaur","Team":"Brand Ops","Target Timeline":"7 Mar 2026","Current Status":"Flow creation started by Jira team","Final Status":"Not Due","Target Timeline Month":"Apr'26"},{"Observation":"5B","Observation Header":"Absence of centralized tool to monitor campaign creation","Sub - Observation":"Product change requests not tracked centrally","Risk Rating":"Medium","Action Item":"All EMI product requirements mandatorily raised and tracked through Jira.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"7 Mar 2026","Current Status":"20th March - process will be documented","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"6","Observation Header":"Aged billed and unbilled receivables from banks / brands","Sub - Observation":"Aged billed and unbilled receivables from banks / brands","Risk Rating":"Medium","Action Item":"Business to review and share ETA for collection on pending dues beyond 180 days.","Incident / Systemic":"Incident & Systemic","Owner / SPOC":"Aanchal Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"Ongoing - Mar 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"7A","Observation Header":"Manual process of cashback offer creation in Promo Engine","Sub - Observation":"Lack of standardized templates for offer creation","Risk Rating":"Medium","Action Item":"Product team created standard Prerequisite for brand wise UAT by Brand Ops team.","Incident / Systemic":"Systemic","Owner / SPOC":"Harleen Kaur","Team":"Brand Ops","Target Timeline":"15 Mar 2026","Current Status":"Created for All brands. Observations discussed with Product team","Final Status":"Implemented","Target Timeline Month":"Mar'26"},{"Observation":"7B","Observation Header":"Manual process of cashback offer creation in Promo Engine","Sub - Observation":"Lack of automation in offer campaign creation and validation","Risk Rating":"Medium","Action Item":"Once standard Prereq finalized, Product to confirm feasibility of automation.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"Post template finalization","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"7C","Observation Header":"Manual process of cashback offer creation in Promo Engine","Sub - Observation":"Lack of functionality to set product/SKU level expiry in campaign","Risk Rating":"Medium","Action Item":"Functionality exists in new standard Pre Req format.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Feb'26"},{"Observation":"8A","Observation Header":"No reconciliation process with banks for EMI transactions","Sub - Observation":"No Reverse Recon with HDFC bank to validate Loan Booked files","Risk Rating":"Medium","Action Item":"Phase 1: HDFC reverse reconciliation in development. Bank requested additional data, under testing.","Incident / Systemic":"Incident & Systemic","Owner / SPOC":"Akshay Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"15 Mar 2026","Current Status":"Product development done. Bank raised issue in file format. New Timeline 31st March.","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"8B","Observation Header":"No reconciliation process with banks for EMI transactions","Sub - Observation":"No Reverse Recon with other banks to validate Loan Booked files","Risk Rating":"Medium","Action Item":"Feasibility to be explored for banks with maximum exposure (SBI, ICICI, Axis, Kotak).","Incident / Systemic":"Incident & Systemic","Owner / SPOC":"Akshay Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"31 Mar 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"9","Observation Header":"Under-invoicing due to incorrect application of commercials","Sub - Observation":"Under-invoicing of processing fees and excess discount due to nearest TID logic","Risk Rating":"Medium","Action Item":"Define a threshold in SOP above which any adjustment requires defined approval (CBO/CFO).","Incident / Systemic":"Systemic","Owner / SPOC":"Aanchal Sharma","Team":"Business Team (Brand & Bank Alliance)","Target Timeline":"15 Mar 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"10A","Observation Header":"Discrepancy noted in CDO reports","Sub - Observation":"Missing Transactions in reports consumed by RA team","Risk Rating":"Low","Action Item":"Query for generating CDO reports corrected to include missing transaction category.","Incident / Systemic":"Incident","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Feb'26"},{"Observation":"10B","Observation Header":"Discrepancy noted in CDO reports","Sub - Observation":"Missing Transactions in reports consumed by RA team","Risk Rating":"Low","Action Item":"Introduce monthly validation between system data and CDO reports.","Incident / Systemic":"Systemic","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"31 Mar 2026","Current Status":"","Final Status":"Not Due","Target Timeline Month":"Mar'26"},{"Observation":"11","Observation Header":"Incorrect velocity configured for LG campaign","Sub - Observation":"Incorrect customer names recorded","Risk Rating":"Low","Action Item":"Hygiene check including special character/numeric validation under development to restrict gibberish in name field.","Incident / Systemic":"Incident","Owner / SPOC":"Mahesh Arora","Team":"Product","Target Timeline":"Implemented","Current Status":"","Final Status":"Implemented","Target Timeline Month":"Feb'26"}];
+  FILTERED = [...ALL_DATA];
+  renderAll();
+  populateFilterDropdowns();
+  setLive(false, 'Demo data');
+  document.getElementById('syncNext').textContent = 'Connect sheet to go live';
+}
+
+// ════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════
+function parseDate(s) {
+  if (!s) return null;
+  s = s.replace(/(\d+)(st|nd|rd|th)/gi,'$1').replace(/[''′']/g,"'").trim();
+  if (/^(implemented|ongoing|post|under|tbd)/i.test(s)) return null;
+  let d = new Date(s); if (!isNaN(d)) return d;
+  let m = s.match(/(\d+)\s*([A-Za-z]+)[',\s]+(\d{2,4})/);
+  if (m){const yr=m[3].length===2?'20'+m[3]:m[3];d=new Date(m[1]+' '+m[2]+' '+yr);if(!isNaN(d))return d;}
+  m = s.match(/([A-Za-z]+)['\s](\d{2,4})/);
+  if (m){const yr=m[2].length===2?'20'+m[2]:m[2];d=new Date(m[1]+' 01 '+yr);if(!isNaN(d))return d;}
+  m = s.match(/(\d+)\s+([A-Za-z]+)$/);
+  if (m){d=new Date(m[1]+' '+m[2]+' 2026');if(!isNaN(d))return d;}
+  return null;
+}
+function daysLeft(row) {
+  const d = parseDate(row['Target Timeline']);
+  if (!d) return null;
+  return Math.round((d - TODAY) / 86400000);
+}
+function statusPill(s) {
+  if (s==='Implemented') return '<span class="pill impl">✓ Implemented</span>';
+  if (s==='Not Due')     return '<span class="pill nd">◷ Not Due</span>';
+  if (s==='Overdue')     return '<span class="pill ov">⚠ Overdue</span>';
+  return `<span class="pill nd">${s||'—'}</span>`;
+}
+function riskHtml(r) {
+  if (r==='High')   return '<span class="risk-h">▲ HIGH</span>';
+  if (r==='Medium') return '<span class="risk-m">◆ MED</span>';
+  if (r==='Low')    return '<span class="risk-l">▼ LOW</span>';
+  return r||'—';
+}
+
+// ════════════════════════════════════════════════════
+// RENDER ALL
+// ════════════════════════════════════════════════════
+function renderAll() {
+  renderStats(); renderDonut(); renderMonthBars();
+  renderTeamProgress(); renderRiskPills(); renderTypeGrid();
+  renderBreachTracker(); renderOwnerList(); renderUpdatesList();
+  renderTable(FILTERED); renderNotifications();
+}
+
+function renderStats() {
+  const impl   = ALL_DATA.filter(r=>r['Final Status']==='Implemented').length;
+  const notdue = ALL_DATA.filter(r=>r['Final Status']==='Not Due').length;
+  const breach = ALL_DATA.filter(r=>{
+    if(r['Final Status']==='Implemented') return false;
+    const dl=daysLeft(r); return dl!==null && dl<=7 && dl>=0;
+  }).length;
+  const total = ALL_DATA.length;
+  document.getElementById('sTotal').textContent   = total;
+  document.getElementById('sImpl').textContent    = impl;
+  document.getElementById('sImplP').textContent   = Math.round(impl/total*100)+'% complete';
+  document.getElementById('sNotDue').textContent  = notdue;
+  document.getElementById('sNotDueP').textContent = Math.round(notdue/total*100)+'% pending';
+  document.getElementById('sBreach').textContent  = breach;
+}
+
+function renderDonut() {
+  const impl  = ALL_DATA.filter(r=>r['Final Status']==='Implemented').length;
+  const nd    = ALL_DATA.filter(r=>r['Final Status']==='Not Due').length;
+  const total = ALL_DATA.length || 1;
+  const map   = {Implemented:{v:impl,c:'#22c55e'},'Not Due':{v:nd,c:'#a78bfa'}};
+  const cx=70,cy=70,r=52,circ=2*Math.PI*r;
+  const svg=document.getElementById('donutSvg');
+  svg.innerHTML='<circle cx="70" cy="70" r="52" fill="none" stroke="#e2e6ef" stroke-width="16"/>';
+  let off=0;
+  Object.entries(map).forEach(([k,{v,c}])=>{
+    const pct=v/total,dash=pct*circ;
+    const el=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    el.setAttribute('cx',cx);el.setAttribute('cy',cy);el.setAttribute('r',r);
+    el.setAttribute('fill','none');el.setAttribute('stroke',c);el.setAttribute('stroke-width','16');
+    el.setAttribute('stroke-dasharray',`${dash} ${circ-dash}`);
+    el.setAttribute('stroke-dashoffset',-(off*circ));
+    el.setAttribute('transform','rotate(-90 70 70)');
+    svg.appendChild(el); off+=pct;
+  });
+  ['<text x="70" y="64" text-anchor="middle" fill="#e8edf5" font-size="22" font-family="Bebas Neue">'+total+'</text>',
+   '<text x="70" y="79" text-anchor="middle" fill="#5a6a85" font-size="8" font-family="DM Mono" letter-spacing="1">TOTAL ATRs</text>'
+  ].forEach(h=>{const d=document.createElement('div');d.innerHTML=h;svg.appendChild(d.firstChild);});
+  const leg=document.getElementById('donutLeg'); leg.innerHTML='';
+  Object.entries(map).forEach(([k,{v,c}])=>{
+    const p=Math.round(v/total*100);
+    leg.innerHTML+=`<div class="dl-row"><div class="dl-name">${k}</div>
+      <div class="dl-track"><div class="dl-fill" style="width:${p}%;background:${c}"></div></div>
+      <div class="dl-val" style="color:${c}">${v}</div></div>`;
+  });
+}
+
+function renderMonthBars() {
+  const months={};
+  ALL_DATA.forEach(r=>{
+    const m=r['Target Timeline Month']||'Unknown';
+    if(!months[m]) months[m]={impl:0,nd:0};
+    r['Final Status']==='Implemented'?months[m].impl++:months[m].nd++;
+  });
+  const ORDER=['Feb\'26','Mar\'26','Apr\'26'];
+  const sorted=Object.entries(months).sort((a,b)=>{
+    const ai=ORDER.indexOf(a[0]),bi=ORDER.indexOf(b[0]);
+    return (ai<0?99:ai)-(bi<0?99:bi);
+  });
+  const wrap=document.getElementById('monthBars'); wrap.innerHTML='';
+  const maxV=Math.max(...sorted.map(([,v])=>v.impl+v.nd),1);
+  sorted.forEach(([m,v])=>{
+    const hi=Math.round((v.impl/maxV)*110),ni=Math.round((v.nd/maxV)*110);
+    wrap.innerHTML+=`<div class="b-col"><div class="b-stacks">
+      <div class="b-bar" style="height:${hi}px;background:var(--ok)"><div class="b-tip">${v.impl} Implemented</div></div>
+      <div class="b-bar" style="height:${ni}px;background:var(--notdue)"><div class="b-tip">${v.nd} Not Due</div></div>
+    </div><div class="b-lbl">${m}</div></div>`;
+  });
+}
+
+function renderTeamProgress() {
+  const map={};
+  ALL_DATA.forEach(r=>{
+    const t=(r['Team']||'Unknown').trim();
+    if(!map[t]) map[t]={total:0,done:0};
+    map[t].total++;
+    if(r['Final Status']==='Implemented') map[t].done++;
+  });
+  const abbrev={'Business Team (Brand & Bank Alliance)':'Business / Alliance','Enterprise Operation Team':'Enterprise Ops'};
+  const colors=['#6ee7b7','#38bdf8','#a78bfa','#f59e0b','#f87171','#34d399'];
+  const wrap=document.getElementById('teamProg'); wrap.innerHTML='';
+  Object.entries(map).sort((a,b)=>b[1].total-a[1].total).forEach(([t,d],i)=>{
+    const p=Math.round(d.done/d.total*100);
+    wrap.innerHTML+=`<div class="tp-row">
+      <div class="tp-meta"><span class="tp-name">${abbrev[t]||t}</span>
+      <span class="tp-counts">${d.done}/${d.total} · ${p}%</span></div>
+      <div class="tp-track"><div class="tp-fill" style="width:${p}%;background:${colors[i%colors.length]}"></div></div>
+    </div>`;
+  });
+}
+
+function renderRiskPills() {
+  const map={High:0,Medium:0,Low:0};
+  ALL_DATA.forEach(r=>{if(map[r['Risk Rating']]!==undefined) map[r['Risk Rating']]++;});
+  const cols={High:'var(--danger)',Medium:'var(--warn)',Low:'var(--ok)'};
+  const total=ALL_DATA.length||1;
+  const wrap=document.getElementById('riskPills'); wrap.innerHTML='';
+  Object.entries(map).forEach(([k,v])=>{
+    wrap.innerHTML+=`<div class="rp-row"><div class="rp-label">${k}</div>
+      <div class="rp-track"><div class="rp-fill" style="width:${Math.round(v/total*100)}%;background:${cols[k]}"></div></div>
+      <div class="rp-count" style="color:${cols[k]}">${v}</div></div>`;
+  });
+}
+
+function renderTypeGrid() {
+  const map={Incident:0,Systemic:0,'Both':0};
+  ALL_DATA.forEach(r=>{
+    const t=r['Incident / Systemic']||'';
+    if(t.includes('&')||t.toLowerCase().includes('both')) map['Both']++;
+    else if(t==='Incident') map.Incident++;
+    else map.Systemic++;
+  });
+  const cols={Incident:'var(--danger)',Systemic:'var(--info)',Both:'var(--warn)'};
+  const wrap=document.getElementById('typeGrid'); wrap.innerHTML='';
+  Object.entries(map).forEach(([k,v])=>{
+    wrap.innerHTML+=`<div class="type-card">
+      <div class="type-num" style="color:${cols[k]}">${v}</div>
+      <div class="type-lbl">${k}</div></div>`;
+  });
+}
+
+function renderBreachTracker() {
+  const wrap=document.getElementById('breachList');
+  const items=ALL_DATA.filter(r=>r['Final Status']!=='Implemented')
+    .map(r=>({...r,_dl:daysLeft(r)}))
+    .filter(r=>r._dl!==null&&r._dl<=10)
+    .sort((a,b)=>a._dl-b._dl).slice(0,6);
+  wrap.innerHTML='';
+  if(!items.length){wrap.innerHTML='<div style="font-size:.72rem;color:var(--ok);padding:8px 0;font-family:var(--f-mono)">✅ No imminent breach risk</div>';return;}
+  items.forEach((r,i)=>{
+    const dl=r._dl;
+    const lbl=dl<0?Math.abs(dl)+'d OVERDUE':dl===0?'DUE TODAY':dl+'d left';
+    const cls=dl<0?'red':dl<=3?'amber':'safe';
+    wrap.innerHTML+=`<div class="breach-item" style="animation:fadein .3s ease ${i*.05}s both">
+      <div><div class="bi-obs">${r['Observation']} · ${r['Team']}</div>
+        <div class="bi-text">${(r['Action Item']||'').slice(0,55)}…</div>
+        <div class="bi-owner">👤 ${(r['Owner / SPOC']||'').split(',')[0].trim()}</div></div>
+      <div class="bi-badge ${cls}">${lbl}</div></div>`;
+  });
+}
+
+function renderOwnerList() {
+  const map={};
+  ALL_DATA.forEach(r=>{
+    const o=(r['Owner / SPOC']||'Unknown').split(',')[0].trim();
+    if(!map[o]) map[o]={total:0,done:0};
+    map[o].total++;
+    if(r['Final Status']==='Implemented') map[o].done++;
+  });
+  const wrap=document.getElementById('ownerList'); wrap.innerHTML='';
+  Object.entries(map).sort((a,b)=>b[1].total-a[1].total).slice(0,8).forEach(([o,d])=>{
+    wrap.innerHTML+=`<div class="owner-row">
+      <span class="owner-name">👤 ${o}</span>
+      <div class="owner-stats">
+        <span class="os-pill green">${d.done} done</span>
+        <span class="os-pill gray">${d.total} total</span>
+      </div></div>`;
+  });
+}
+
+function renderUpdatesList() {
+  const items=ALL_DATA.filter(r=>(r['Current Status']||'').trim()).slice(0,6);
+  const wrap=document.getElementById('updatesList'); wrap.innerHTML='';
+  items.forEach(r=>{
+    wrap.innerHTML+=`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="font-family:var(--f-mono);font-size:.6rem;color:var(--info);margin-bottom:3px">${r['Observation']} · ${r['Team']}</div>
+      <div style="font-size:.7rem;color:var(--ink2);line-height:1.45">${r['Current Status']}</div></div>`;
+  });
+  if(!items.length) wrap.innerHTML='<div style="font-size:.72rem;color:var(--muted);padding:10px 0">No status updates recorded.</div>';
+}
+
+function renderNotifications() {
+  const notifs=ALL_DATA.filter(r=>r['Final Status']!=='Implemented')
+    .map(r=>({...r,_dl:daysLeft(r)}))
+    .filter(r=>r._dl!==null&&r._dl<=7)
+    .sort((a,b)=>a._dl-b._dl);
+  const badge=document.getElementById('nBadge');
+  badge.textContent=notifs.length;
+  badge.style.display=notifs.length?'flex':'none';
+  const body=document.getElementById('nBody'); body.innerHTML='';
+  if(!notifs.length){body.innerHTML='<div class="np-empty">✅ No alerts at this time</div>';return;}
+  notifs.forEach((r,i)=>{
+    const dl=r._dl;
+    const lbl=dl<0?Math.abs(dl)+'D OVERDUE':dl===0?'DUE TODAY':dl+'D LEFT';
+    const cls=dl<0?'red':'amber';
+    body.innerHTML+=`<div class="np-item ${cls}" style="animation-delay:${i*.05}s">
+      <div class="np-top"><div class="np-text">${(r['Action Item']||'').slice(0,72)}…</div>
+        <span class="np-tag ${cls}">${lbl}</span></div>
+      <div class="np-meta">${r['Observation']} · ${r['Team']} · 👤 ${(r['Owner / SPOC']||'').split(',')[0].trim()} · Due: ${r['Target Timeline']}</div>
+    </div>`;
+  });
+}
+
+function renderTable(data) {
+  const body=document.getElementById('tBody');
+  body.innerHTML='';
+  document.getElementById('fCount').textContent=`${data.length} of ${ALL_DATA.length} items`;
+  if(!data.length){body.innerHTML='<tr><td colspan="12" style="text-align:center;padding:32px;color:var(--muted);font-family:var(--f-mono);font-size:.7rem">No records match your filters</td></tr>';return;}
+  data.forEach(r=>{
+    const dl=daysLeft(r);
+    const brFlag=(r['Final Status']!=='Implemented'&&dl!==null&&dl<=3&&dl>=0)?`<span class="breach-flag">⚠ ${dl===0?'Due today':dl+'d to deadline'}</span>`:'';
+    const ovFlag=(r['Final Status']!=='Implemented'&&dl!==null&&dl<0)?`<span class="breach-flag" style="color:var(--danger)">🔴 ${Math.abs(dl)}d overdue</span>`:'';
+    body.innerHTML+=`<tr>
+      <td class="td-obs">${r['Observation']}</td>
+      <td style="font-size:.68rem;color:var(--ink2);max-width:170px">${r['Observation Header']}</td>
+      <td style="font-size:.68rem;color:var(--ink);max-width:200px">${r['Sub - Observation']}</td>
+      <td>${riskHtml(r['Risk Rating'])}</td>
+      <td class="td-action">${r['Action Item']}${brFlag}${ovFlag}</td>
+      <td style="font-size:.62rem;color:var(--muted);white-space:nowrap">${r['Incident / Systemic']}</td>
+      <td class="td-owner">${(r['Owner / SPOC']||'').split(',')[0].trim()}</td>
+      <td style="font-size:.65rem;color:var(--ink2)">${r['Team']}</td>
+      <td class="td-tl">${r['Target Timeline']}</td>
+      <td style="font-size:.65rem;color:var(--ink2);max-width:180px">${r['Current Status']||'—'}</td>
+      <td>${statusPill(r['Final Status'])}</td>
+      <td style="font-family:var(--f-mono);font-size:.6rem;color:var(--muted)">${r['Target Timeline Month']}</td>
+    </tr>`;
+  });
+}
+
+// FILTERS
+function applyFilters(){
+  const q=(document.querySelector('.f-in').value||'').toLowerCase();
+  const st=document.getElementById('fStatus').value;
+  const tm=document.getElementById('fTeam').value;
+  const rk=document.getElementById('fRisk').value;
+  const mn=document.getElementById('fMonth').value;
+  FILTERED=ALL_DATA.filter(r=>{
+    const matchQ=!q||[r['Observation'],r['Observation Header'],r['Sub - Observation'],
+      r['Action Item'],r['Owner / SPOC'],r['Team'],r['Current Status']].join(' ').toLowerCase().includes(q);
+    return matchQ&&(!st||r['Final Status']===st)&&(!tm||r['Team']===tm)
+      &&(!rk||r['Risk Rating']===rk)&&(!mn||r['Target Timeline Month']===mn);
+  });
+  renderTable(FILTERED);
+}
+function resetFilters(){
+  document.querySelector('.f-in').value='';
+  ['fStatus','fTeam','fRisk','fMonth'].forEach(id=>document.getElementById(id).value='');
+  FILTERED=[...ALL_DATA]; renderTable(FILTERED);
+}
+function populateFilterDropdowns(){
+  const ts=document.getElementById('fTeam'),ms=document.getElementById('fMonth');
+  ts.innerHTML='<option value="">All Teams</option>';
+  ms.innerHTML='<option value="">All Months</option>';
+  [...new Set(ALL_DATA.map(r=>r['Team']).filter(Boolean))].sort()
+    .forEach(t=>ts.innerHTML+=`<option value="${t}">${t}</option>`);
+  [...new Set(ALL_DATA.map(r=>r['Target Timeline Month']).filter(Boolean))]
+    .sort().forEach(m=>ms.innerHTML+=`<option value="${m}">${m}</option>`);
+}
+
+// NOTIF PANEL
+function openNotif(){document.getElementById('nPanel').classList.add('open');document.getElementById('nOverlay').classList.add('show');}
+function closeNotif(){document.getElementById('nPanel').classList.remove('open');document.getElementById('nOverlay').classList.remove('show');}
+</script>
+</body>
+</html>
